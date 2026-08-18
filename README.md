@@ -135,7 +135,7 @@ SecAudit/
 Every finding has a severity (`CRITICAL/HIGH/MEDIUM/LOW/INFO`), each with a
 fixed point deduction (25/15/7/3/0). The score starts at 100 and every
 non-INFO finding subtracts its weight, floored at 0. See
-`src/scoring/risk.py` - it's short and deliberately easy to explain.
+`src/scoring/risk.py`
 
 ## Roadmap
 
