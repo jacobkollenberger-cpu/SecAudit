@@ -74,7 +74,7 @@ Terraform.
 ## Installation
 
 ```bash
-git clone https://github.com/<you>/SecAudit.git
+git clone https://github.com/ollen/SecAudit.git
 cd SecAudit
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -135,7 +135,7 @@ SecAudit/
 Every finding has a severity (`CRITICAL/HIGH/MEDIUM/LOW/INFO`), each with a
 fixed point deduction (25/15/7/3/0). The score starts at 100 and every
 non-INFO finding subtracts its weight, floored at 0. See
-`src/scoring/risk.py` - it's short and deliberately easy to explain.
+`src/scoring/risk.py`
 
 ## Roadmap
 
