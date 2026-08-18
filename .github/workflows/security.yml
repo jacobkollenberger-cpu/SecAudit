@@ -1,0 +1,67 @@
+name: SecAudit CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly scheduled audit, 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run pytest
+        run: pytest -v
+
+  self_audit:
+    name: Self-audit runner (host checks)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run SecAudit against the CI runner
+        run: |
+          python main.py --local --output json,html --outdir reports/ --fail-on CRITICAL || true
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: secaudit-report
+          path: reports/
+
+  # Uncomment once terraform/aws-lab is deployed and reachable, to audit
+  # the deliberately-vulnerable lab environment on each run:
+  #
+  # lab_audit:
+  #   name: Audit Terraform lab target
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #     - run: pip install -r requirements.txt
+  #     - run: |
+  #         python main.py --remote ${{ secrets.LAB_TARGET_IP }} \
+  #           --output json,html --outdir reports/ \
+  #           --fail-under 70 --fail-on CRITICAL
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: secaudit-lab-report
+  #         path: reports/

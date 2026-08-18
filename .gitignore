@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+reports/
+*.egg-info/
+.pytest_cache/
+
+# Terraform
+terraform/aws-lab/.terraform/
+terraform/aws-lab/*.tfstate
+terraform/aws-lab/*.tfstate.backup
+terraform/aws-lab/terraform.tfvars
+terraform/aws-lab/.terraform.lock.hcl
