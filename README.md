@@ -74,7 +74,7 @@ Terraform.
 ## Installation
 
 ```bash
-git clone https://github.com/<you>/SecAudit.git
+git clone https://github.com/ollen/SecAudit.git
 cd SecAudit
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
