@@ -66,7 +66,7 @@ python main.py --local --output json,html,csv --outdir reports
 SMB (445), NetBIOS (139), and MS-RPC (135) are enabled by default on
 Windows for file/printer sharing and are bound to all interfaces
 (`0.0.0.0` / `:::`), not just localhost. This isn't evidence of
-compromise — it's standard Windows behavior — but it is real attack
+compromise but it is real attack
 surface: these ports are reachable from whatever network the machine is
 connected to unless the Windows network profile is set to **Private**
 and/or a host firewall rule restricts them.
