@@ -1,19 +1,23 @@
 ########################################################################
-# SecAudit lab environment - DELIBERATELY VULNERABLE. DO NOT reuse any
-# of these patterns in production. Purpose: give SecAudit a realistic,
-# disposable network target with textbook misconfigurations so its
-# findings can be demonstrated end-to-end.
+# SecAudit lab environment - DELIBERATELY VULNERABLE. Don't copy any of
+# this into anything real. It's just here so SecAudit's --remote scan
+# path has an actual misconfigured target to point at instead of me
+# testing everything against localhost.
 #
 # Misconfigurations baked in on purpose:
-#   - Security group open to 0.0.0.0/0 on SSH(22), FTP(21), Telnet(23),
-#     RDP(3389), and SMB(445)
+#   - Security group open on SSH(22), FTP(21), Telnet(23), RDP(3389),
+#     and SMB(445) (to your IP by default, or 0.0.0.0/0 if you flip
+#     allow_my_ip_only - see terraform.tfvars.example)
 #   - An EC2 instance running vsftpd (anonymous upload allowed) and
 #     an old OpenSSH build
 #   - An S3 bucket with public-read ACL and no encryption
-#   - IAM user with an overly broad inline policy (AdministratorAccess)
+#   - An IAM user with a wide-open inline policy (Action "*" on
+#     Resource "*") - no access key generated for it, since that would
+#     put a real usable AWS secret into Terraform state
 #
-# Cost note: t3.micro is Free Tier eligible in most accounts, but
-# ALWAYS run `terraform destroy` when you're done testing.
+# t3.micro is Free Tier eligible in most accounts, but run
+# `terraform destroy` when you're done - it's genuinely insecure and
+# will keep costing money (and risk) if left running.
 ########################################################################
 
 terraform {
@@ -22,6 +26,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
     }
   }
 }
@@ -151,10 +159,36 @@ resource "aws_s3_bucket_acl" "vuln_bucket_acl" {
   depends_on = [aws_s3_bucket_public_access_block.vuln_bucket]
 }
 
+# --- Intentionally over-permissive IAM user ---------------------------
+resource "aws_iam_user" "vuln_user" {
+  name = "secaudit-lab-vuln-user"
+  tags = { Project = "SecAudit-Lab", Purpose = "intentionally-vulnerable" }
+}
+
+resource "aws_iam_user_policy" "vuln_user_admin" {
+  name = "overly-broad-inline-policy"
+  user = aws_iam_user.vuln_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "*"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 output "target_public_ip" {
   value = aws_instance.vuln_target.public_ip
 }
 
 output "vuln_bucket_name" {
   value = aws_s3_bucket.vuln_bucket.bucket
+}
+
+output "vuln_iam_user_name" {
+  value = aws_iam_user.vuln_user.name
 }

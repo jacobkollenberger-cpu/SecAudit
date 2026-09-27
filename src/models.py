@@ -44,7 +44,18 @@ class Severity(str, Enum):
         }[self]
 
 
-_id_counter = itertools.count(1)
+# Each severity gets its own counter (CRIT-001, LOW-001, etc. all start
+# at 1 independently) instead of one shared counter across everything -
+# otherwise a report's only CRITICAL finding could end up labeled
+# "CRIT-004" just because some unrelated INFO findings were created
+# first in the same run.
+_id_counters: dict = {}
+
+
+def _next_id(prefix: str) -> int:
+    if prefix not in _id_counters:
+        _id_counters[prefix] = itertools.count(1)
+    return next(_id_counters[prefix])
 
 
 @dataclass
@@ -68,7 +79,7 @@ class Finding:
                 Severity.LOW: "LOW",
                 Severity.INFO: "INFO",
             }[self.severity]
-            self.finding_id = f"{prefix}-{next(_id_counter):03d}"
+            self.finding_id = f"{prefix}-{_next_id(prefix):03d}"
 
     def to_dict(self) -> dict:
         d = asdict(self)

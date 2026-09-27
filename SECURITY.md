@@ -1,33 +1,5 @@
-# Security Policy
+# Security Notes
 
-## Scope and intended use
+**Use this responsibly.** The `--remote` scanning feature makes real TCP connection attempts against whatever host you point it at. Only run it against machines you own or have explicit permission to test - your own computer, a lab VM, the Terraform lab in this repo, etc. Scanning something you don't have permission for can be illegal (the Computer Fraud and Abuse Act in the US) and will almost certainly violate whoever's hosting it's terms of service.
 
-SecAudit is a defensive auditing tool intended for use against systems and
-networks you own or are explicitly authorized to test (your own machines,
-lab environments, or environments covered by a signed pentest/bug-bounty
-authorization). The `--remote` scanning functionality performs active TCP
-connection attempts; running it against third-party infrastructure without
-authorization may be illegal in your jurisdiction.
-
-## Reporting a vulnerability in SecAudit itself
-
-If you find a security issue in this tool (e.g. a flaw that could let a
-scanned target compromise the machine running SecAudit), please open a
-private security advisory on GitHub rather than a public issue, or email
-the maintainer directly. Include:
-
-- A description of the issue and its impact
-- Steps to reproduce
-- Affected version/commit
-
-Please allow a reasonable window to address the issue before public
-disclosure.
-
-## Supported versions
-
-| Version | Supported |
-|---------|-----------|
-| main    | yes       |
-
-This is a personal/portfolio project without a formal LTS policy; the
-`main` branch is the only supported line.
+If you find an actual security bug in this tool itself (not a scanning-target finding, but something wrong with SecAudit's own code), feel free to open an issue or reach out directly.

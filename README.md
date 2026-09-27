@@ -1,8 +1,6 @@
 # SecAudit
 
-A Python CLI that audits a local system or a remote host's network exposure,
-flags common security misconfigurations, scores overall risk, and produces
-human-readable and machine-readable reports.
+A Python CLI that audits a local machine or a remote host's network exposure, flags common security misconfigurations, scores overall risk, and spits out a report you can actually read (or hand to someone else).
 
 ```
 SECURITY AUDIT REPORT
@@ -29,52 +27,43 @@ Low:      1
 Info:     4
 ```
 
-## Why this exists
+## Why I built this
 
-Built as a hands-on security engineering project: it exercises networking
-fundamentals (ports/services/protocols), system hardening (firewalls, file
-permissions, password policy, SSH config), scripting/automation, and
-DevSecOps practices (CI, exit codes, scheduled scans), then ties it all
-together against a real, disposable AWS lab environment provisioned with
-Terraform.
+I wanted a project that actually looked like what a SOC/security analyst deals with day to day, not just another script that pings a few ports and calls it done. So this checks the stuff that actually shows up in real hardening checklists: firewall status, file permissions, SSH config, password policy, running services, and suspicious processes on the local box, plus a basic network scan for auditing a remote target (like a lab VM).
 
-## Features
+It also gave me an excuse to practice things I don't get much hands-on time with otherwise: writing pytest tests, wiring up a GitHub Actions workflow that runs the tool against itself on every push, and standing up a deliberately-vulnerable AWS target with Terraform so I'd have something real to point the network-scanning side at.
 
-**Local system checks**
-- Listening ports + what's bound to them, flagged by risk (FTP/Telnet/SMB/RDP/etc.)
-- Running services, flagged against a common "unnecessary service" watchlist
-- Host firewall status (ufw / firewalld / nftables / iptables / pf / Windows Firewall)
-- Password policy (`/etc/login.defs`, PAM pwquality presence)
-- SSH daemon configuration (root login, empty passwords, password auth)
-- Sensitive file permissions (`/etc/shadow`, `/etc/passwd`, SSH private keys,
-  world-writable files)
-- Heuristic suspicious-process detection
+## What it checks
 
-**Network checks**
-- Multi-threaded TCP connect scan of a target host
-- Dangerous-port flagging (FTP, Telnet, SMB, RDP, databases, etc.) with
-  higher severity when exposed broadly
-- Lightweight banner grabbing / service enumeration
-- EOL/known-old service signature matching
+**On the local machine**
+- Listening ports and what's bound to them, flagged if they're something risky (FTP/Telnet/SMB/RDP/etc.)
+- Running services, checked against a small "probably shouldn't be running" list
+- Whether a host firewall is actually active (ufw / firewalld / nftables / iptables / pf / Windows Firewall)
+- Password policy (`/etc/login.defs`, whether pam_pwquality is even configured)
+- SSH daemon config (root login allowed? empty passwords allowed? password auth instead of keys?)
+- Permissions on sensitive files (`/etc/shadow`, `/etc/passwd`, SSH private keys, anything world-writable)
+- A basic "does this look like a sketchy process" heuristic
+
+**Against a remote target**
+- Multi-threaded TCP connect scan
+- Same dangerous-port flagging as the local check, but weighted higher since it's reachable over the network
+- Basic banner grabbing to catch obviously outdated service versions
 
 **Scoring**
-- 0–100 Security Score with letter grade, derived from finding severities
-  (see `src/scoring/risk.py` for the exact, documented formula)
+- Starts at 100, subtracts points per finding based on severity, floors at 0. Nothing fancy - see `src/scoring/risk.py` if you want the exact numbers.
 
-**Reporting**
-- Text (console + `.txt`), JSON, CSV, and a styled HTML report
+**Reports**
+- Plain text (console or `.txt`), JSON, CSV, or a dark-mode HTML report
 
-**Automation / DevSecOps**
-- `--fail-under N` and `--fail-on SEVERITY` flags for CI/CD gating
-- GitHub Actions workflow: runs unit tests, self-audits the runner on
-  every push and nightly on a schedule, uploads reports as artifacts
-- Terraform module that stands up a deliberately vulnerable AWS
-  EC2 + S3 lab target to demonstrate the network-audit path end-to-end
+**CI stuff**
+- `--fail-under N` and `--fail-on SEVERITY` so it can gate a CI pipeline
+- A GitHub Actions workflow that runs the test suite and audits the runner itself, on every push and nightly
+- A Terraform module that spins up an intentionally misconfigured AWS EC2 instance + S3 bucket so the `--remote` path has something real to scan
 
-## Installation
+## Setup
 
 ```bash
-git clone https://github.com/ollen/SecAudit.git
+git clone https://github.com/jacobkollenberger-cpu/SecAudit.git
 cd SecAudit
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -89,17 +78,17 @@ python main.py --local
 # Local audit, write JSON + HTML reports
 python main.py --local --output json,html --outdir reports/
 
-# Run only specific local modules
+# Run only specific local checks
 python main.py --local --modules firewall,permissions,ports
 
 # Audit a remote host's exposed ports/services
 python main.py --remote 192.168.1.10 --ports 21,22,23,80,443,445,3389
 
-# CI/CD gate: fail the build if score < 70 or any CRITICAL finding exists
+# CI gate: fail the build if score < 70 or any CRITICAL finding exists
 python main.py --local --fail-under 70 --fail-on CRITICAL
 ```
 
-Run `python main.py --help` for the full flag list.
+`python main.py --help` for the full flag list.
 
 ## Project layout
 
@@ -124,7 +113,7 @@ SecAudit/
 │       ├── csv_report.py
 │       └── html_report.py
 ├── tests/                    # pytest unit tests
-├── terraform/aws-lab/        # deliberately vulnerable AWS target (Phase 5)
+├── terraform/aws-lab/        # deliberately vulnerable AWS target
 ├── .github/workflows/security.yml   # CI: tests + self-audit
 ├── SECURITY.md
 └── CHANGELOG.md
@@ -132,27 +121,26 @@ SecAudit/
 
 ## How scoring works
 
-Every finding has a severity (`CRITICAL/HIGH/MEDIUM/LOW/INFO`), each with a
-fixed point deduction (25/15/7/3/0). The score starts at 100 and every
-non-INFO finding subtracts its weight, floored at 0. See
-`src/scoring/risk.py`
+Every finding has a severity (CRITICAL/HIGH/MEDIUM/LOW/INFO), each with a fixed point deduction (25/15/7/3/0). Score starts at 100, every non-INFO finding subtracts its weight, floored at 0. Full breakdown in `src/scoring/risk.py`.
 
-## Roadmap
+## Things I've fixed after actually using it
 
-- [x] Phase 1: CLI, port/service detection, config checks, JSON output
-- [x] Phase 2: severity ratings, scoring, remediation text
-- [ ] Phase 2.5: live CVE lookups (NVD API) for banner-matched service versions
-- [x] Phase 3: exit codes for CI/CD; GitHub Actions scheduling
-- [ ] Phase 3.5: Slack/email alerting on findings above a threshold
-- [x] Phase 4: GitHub Actions self-audit on every push
-- [x] Phase 5: Terraform-provisioned vulnerable AWS lab target
+Running this against my own machines turned up a few real bugs that unit tests alone didn't catch:
+
+- **Finding IDs were numbered wrong.** All findings shared a single counter regardless of severity, so a report's only CRITICAL finding could show up labeled `CRIT-004` just because some INFO findings happened to get created first in that run. Each severity now numbers independently.
+- **Duplicate findings on dual-stack hosts.** Running this against my Windows machine, SMB and RPC each got reported twice - once for the IPv4-any binding (`0.0.0.0`), once for IPv6-any (`:::`) - which is really one exposure, not two. See `docs/sample-scan-windows.md` for the real scan output and how it's fixed now.
+- The local ports check didn't report anything when nothing matched a watchlist, unlike every other module, which was just inconsistent. Fixed.
+
+## What's next
+
+- Live CVE lookups (NVD API) for banner-matched service versions
+- Slack/email alerting when findings above a threshold show up
+- A `--host-role server|workstation` flag, since the severity table currently treats things like SMB exposure as CRITICAL regardless of whether it's a server or just someone's laptop on a home network (see the Windows sample scan doc for why that came up)
+- Windows-native permission/password-policy checks (`icacls`/`Get-Acl`, `secpol.msc`) instead of skipping those checks on Windows entirely
 
 ## Disclaimer
 
-Only run the `--remote` network-scanning functionality against hosts you
-own or have explicit written authorization to test. Unauthorized port
-scanning may violate laws (e.g. the U.S. Computer Fraud and Abuse Act) or
-your ISP/cloud provider's acceptable use policy.
+Only run `--remote` against hosts you own or have explicit permission to test. Scanning something you don't own can be illegal depending on where you are (in the US, this falls under the Computer Fraud and Abuse Act) and is against basically every cloud provider's terms of service.
 
 ## License
 

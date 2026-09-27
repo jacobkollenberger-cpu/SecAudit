@@ -91,6 +91,38 @@ def local_listening_ports() -> list[dict]:
     return _local_ports_ss()
 
 
+ANY_ADDRESSES = ("0.0.0.0", "::", "*")
+
+
+def _dedupe_dual_stack(rows: list[dict]) -> list[dict]:
+    """A service bound to 'all interfaces' shows up twice on dual-stack
+    hosts - once for its IPv4-any binding (0.0.0.0) and once for
+    IPv6-any (:::). That's really one exposure, not two, so collapse
+    those into a single row per port before turning them into findings.
+    (Found this the hard way running against my own Windows machine -
+    SMB/RPC were both getting reported twice. See docs/sample-scan-windows.md.)
+    """
+    by_port: dict = {}
+    for row in rows:
+        by_port.setdefault(row["port"], []).append(row)
+
+    deduped = []
+    for port, group in by_port.items():
+        any_rows = [r for r in group if r["address"] in ANY_ADDRESSES]
+        other_rows = [r for r in group if r["address"] not in ANY_ADDRESSES]
+
+        if len(any_rows) >= 2:
+            rep = dict(any_rows[0])
+            rep["address"] = "0.0.0.0" if any(r["address"] == "0.0.0.0" for r in any_rows) else any_rows[0]["address"]
+            deduped.append(rep)
+        else:
+            deduped.extend(any_rows)
+
+        deduped.extend(other_rows)
+
+    return deduped
+
+
 def check_local_ports(target: str = "localhost") -> list[Finding]:
     findings = []
     rows = local_listening_ports()
@@ -107,6 +139,8 @@ def check_local_ports(target: str = "localhost") -> list[Finding]:
             target=target,
         ))
         return findings
+
+    rows = _dedupe_dual_stack(rows)
 
     for row in rows:
         port, addr = row["port"], row["address"]
@@ -146,6 +180,16 @@ def check_local_ports(target: str = "localhost") -> list[Finding]:
                     target=target,
                     evidence=evidence,
                 ))
+
+    if not findings:
+        findings.append(Finding(
+            category="ports",
+            title=f"{len(rows)} listening port(s) found, none flagged",
+            severity=Severity.INFO,
+            description="No listening ports matched the dangerous or sensitive port watchlists.",
+            recommendation="No action needed.",
+            target=target,
+        ))
 
     return findings
 

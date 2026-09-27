@@ -1,8 +1,8 @@
 """
 Static reference data: well-known ports, "dangerous" services, and the
-severity we assign when they're found exposed. This is intentionally a
-plain Python dict so it's trivial to extend later (or eventually swap
-for a live CVE/API feed in Phase 2).
+severity assigned when they're found exposed. Kept as a plain dict for
+now so it's easy to extend - would like to swap this for a live CVE/API
+feed at some point instead of hardcoded severities.
 """
 
 from .. import models

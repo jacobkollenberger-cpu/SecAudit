@@ -1,13 +1,14 @@
 """
-Turns a list of Finding objects into a single 0-100 Security Score
-plus a letter grade. The model is intentionally simple and documented
-so it's easy to defend/explain (e.g. in an interview):
+Turns a list of Finding objects into a single 0-100 score plus a letter
+grade. Kept this simple on purpose - no weighting curves or diminishing
+returns - so the math is just:
 
     score = 100 - sum(severity weight for each non-INFO finding)
     floor at 0, weights defined in models.Severity.weight
 
-Diminishing returns are NOT applied - repeated criticals genuinely
-should tank the score, since each represents a real independent risk.
+I didn't add diminishing returns for repeated criticals (e.g. 3 criticals
+only counting as slightly worse than 2). Each one is a real, independent
+risk, so they should each cost the full 25 points.
 """
 
 from __future__ import annotations

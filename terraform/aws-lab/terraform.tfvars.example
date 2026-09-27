@@ -1,0 +1,6 @@
+# Copy this to terraform.tfvars and fill in your own values.
+# terraform.tfvars is git-ignored so your real IP never gets committed.
+
+aws_region       = "us-east-1"
+allow_my_ip_only = true
+my_ip            = "203.0.113.4/32"  # replace with your actual public IP + /32

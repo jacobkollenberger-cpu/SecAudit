@@ -1,8 +1,9 @@
-# SecAudit AWS Lab (Phase 5)
+# SecAudit AWS Lab
 
-Deploys a **deliberately vulnerable** EC2 instance + S3 bucket so SecAudit
-has a realistic target to audit end-to-end. This is a portfolio/demo
-environment only.
+Deploys a **deliberately vulnerable** EC2 instance + S3 bucket so I had a
+real target to point the `--remote` scanning path at instead of just
+testing against localhost. Not meant for anything but demoing/testing
+this tool.
 
 ## What gets deployed
 - EC2 `t3.micro` (Ubuntu 22.04) running vsftpd (anonymous+write enabled),
